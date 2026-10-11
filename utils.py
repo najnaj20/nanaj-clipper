@@ -13,6 +13,12 @@ def download_audio(url, cookie_path=None, output_path="audio.mp3"):
             'preferredcodec': 'mp3',
             'preferredquality': '192',
         }],
+        # Bypass "The page needs to be reloaded" by mimicking Android client
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['android', 'web'],
+            }
+        },
     }
     if cookie_path:
         ydl_opts['cookiefile'] = cookie_path
@@ -63,6 +69,12 @@ def download_video(url, cookie_path=None, output_path="video.mp4"):
         'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
         'outtmpl': 'video',
         'merge_output_format': 'mp4',
+        # Bypass "The page needs to be reloaded" by mimicking Android client
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['android', 'web'],
+            }
+        },
     }
     if cookie_path:
         ydl_opts['cookiefile'] = cookie_path
