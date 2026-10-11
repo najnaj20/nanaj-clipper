@@ -32,7 +32,7 @@ def download_audio(url, cookie_path=None, output_path="audio.mp3"):
                 'player_client': ['android', 'web'],
             }
         },
-        'concurrent_fragment_downloads': 1, # Human-like traffic
+        'concurrent_fragment_downloads': 1,
     }
     if cookie_path:
         ydl_opts['cookiefile'] = cookie_path
@@ -79,8 +79,10 @@ def analyze_viral_potential(transcript):
     return suggestions[:5]
 
 def download_video(url, cookie_path=None, output_path="video.mp4"):
+    # Changed format to be more flexible. 
+    # We pick the best quality and let merge_output_format handle the MP4 conversion.
     ydl_opts = {
-        'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+        'format': 'bestvideo+bestaudio/best',
         'outtmpl': 'video',
         'merge_output_format': 'mp4',
         'extractor_args': {
