@@ -1,7 +1,6 @@
 import os
-import yt_dlp
-from faster_whisper import WhisperModel
 import subprocess
+from faster_whisper import WhisperModel
 
 def validate_cookies(cookie_path):
     if not cookie_path or not os.path.exists(cookie_path):
@@ -17,46 +16,31 @@ def validate_cookies(cookie_path):
     
     return True, ""
 
-def get_base_opts(cookie_path=None):
-    """Return a robust set of options to bypass YouTube bot detection and metadata bugs."""
-    return {
-        'nocheckcertificate': True,
-        'ignoreerrors': True,
-        'no_playlist': True,
-        'concurrent_fragment_downloads': 1,
-        # FIX: Disable metadata writing to avoid 'metadata_errors' bug
-        'write_info_json': False,
-        'write_all_thumbnails': False,
-        'write_thumbnail': False,
-        'extractor_args': {
-            'youtube': {
-                'player_client': ['android', 'web', 'ios'],
-            }
-        },
-        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-        'http_headers': {
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3',
-            'Accept-Language': 'en-US,en;q=0.9,id;q=0.8',
-            'Referer': 'https://www.youtube.com/',
-        }
-    }
+def run_ytdlp(args):
+    """Helper to run yt-dlp as a CLI command to bypass Python module bugs."""
+    cmd = ["yt-dlp"] + args
+    # We use subprocess to isolate the execution from the Streamlit Python process
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"yt-dlp CLI Error: {result.stderr}")
+    return result.stdout
 
 def download_audio(url, cookie_path=None, output_path="audio.mp3"):
-    opts = get_base_opts(cookie_path)
-    opts.update({
-        'format': 'bestaudio/best',
-        'outtmpl': 'audio',
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
-            'preferredquality': '128',
-        }],
-    })
+    # Using CLI flags instead of Python dict to avoid the 'metadata_errors' bug
+    args = [
+        "-f", "bestaudio/best",
+        "-x", "--audio-format", "mp3",
+        "--audio-quality", "128K",
+        "-o", "audio.%(ext)s",
+        "--no-playlist",
+        "--nocheckcertificate",
+        "--extractor-args", "youtube:player_client=android,web",
+        url
+    ]
     if cookie_path:
-        opts['cookiefile'] = cookie_path
+        args.extend(["--cookies", cookie_path])
         
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        ydl.download([url])
+    run_ytdlp(args)
     return "audio.mp3"
 
 def transcribe_audio(audio_path):
@@ -97,17 +81,19 @@ def analyze_viral_potential(transcript):
     return suggestions[:5]
 
 def download_video(url, cookie_path=None, output_path="video.mp4"):
-    opts = get_base_opts(cookie_path)
-    opts.update({
-        'format': 'bestvideo+bestaudio/best',
-        'outtmpl': 'video',
-        'merge_output_format': 'mp4',
-    })
+    args = [
+        "-f", "bestvideo+bestaudio/best",
+        "--merge-output-format", "mp4",
+        "-o", "video.%(ext)s",
+        "--no-playlist",
+        "--nocheckcertificate",
+        "--extractor-args", "youtube:player_client=android,web",
+        url
+    ]
     if cookie_path:
-        opts['cookiefile'] = cookie_path
+        args.extend(["--cookies", cookie_path])
         
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        ydl.download([url])
+    run_ytdlp(args)
     return "video.mp4"
 
 def crop_video_vertical(video_path, start, end, output_path="clip_vertical.mp4"):
