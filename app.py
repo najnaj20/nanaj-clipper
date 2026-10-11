@@ -7,14 +7,26 @@ st.set_page_config(page_title="Nanaj Clipper AI", page_icon="🎬")
 st.title("🎬 Nanaj Clipper AI")
 st.markdown("### Ubah Video Panjang $\rightarrow$ Viral Vertical Clips ✨")
 
+# --- COOKIES SECTION ---
+st.sidebar.header("🔑 Authentication")
+cookie_file = st.sidebar.file_uploader("Upload cookies.txt for Bypass 403", type=["txt"])
+if cookie_file:
+    with open("cookies.txt", "wb") as f:
+        f.write(cookie_file.getbuffer())
+    st.sidebar.success("Cookies loaded! ✅")
+else:
+    st.sidebar.info("💡 Tips: Gunakan extension 'Get cookies.txt LOCALLY' di Chrome untuk ambil cookies YouTube agar terhindar dari Error 403.")
+
 url = st.text_input("Paste Link YouTube di sini:", placeholder="https://www.youtube.com/watch?v=...")
 
 if url:
+    cookie_path = "cookies.txt" if os.path.exists("cookies.txt") else None
+    
     if "transcript" not in st.session_state:
         with st.spinner("🚀 Sedang menganalisis audio & mencari hook viral..."):
             try:
                 # 1. Download Audio Only
-                audio_path = download_audio(url)
+                audio_path = download_audio(url, cookie_path=cookie_path)
                 
                 # 2. Transcribe
                 transcript = transcribe_audio(audio_path)
@@ -52,7 +64,7 @@ if url:
         if st.button("Generate Vertical Clip 🚀"):
             with st.spinner("Downloading full video & cropping to 9:16..."):
                 try:
-                    video_path = download_video(url)
+                    video_path = download_video(url, cookie_path=cookie_path)
                     output_path = crop_video_vertical(video_path, start, end)
                     
                     with open(output_path, "rb") as file:

@@ -4,7 +4,7 @@ from faster_whisper import WhisperModel
 from moviepy.editor import VideoFileClip
 import subprocess
 
-def download_audio(url, output_path="audio.mp3"):
+def download_audio(url, cookie_path=None, output_path="audio.mp3"):
     ydl_opts = {
         'format': 'bestaudio/best',
         'outtmpl': 'audio',
@@ -14,6 +14,9 @@ def download_audio(url, output_path="audio.mp3"):
             'preferredquality': '192',
         }],
     }
+    if cookie_path:
+        ydl_opts['cookiefile'] = cookie_path
+        
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
     return "audio.mp3"
@@ -38,7 +41,6 @@ def analyze_viral_potential(transcript):
     
     for i, seg in enumerate(transcript):
         text_lower = seg["text"].lower()
-        # Heuristic 1: Keyword match
         if any(kw in text_lower for kw in viral_keywords):
             suggestions.append({
                 "start": seg["start"],
@@ -46,7 +48,6 @@ def analyze_viral_potential(transcript):
                 "text": seg["text"],
                 "reason": "Contains viral trigger word"
             })
-        # Heuristic 2: Short, punchy sentences at the start of a segment
         elif len(seg["text"].split()) < 10 and i < 5:
             suggestions.append({
                 "start": seg["start"],
@@ -55,14 +56,17 @@ def analyze_viral_potential(transcript):
                 "reason": "Strong opening hook potential"
             })
             
-    return suggestions[:5] # Top 5 suggestions
+    return suggestions[:5]
 
-def download_video(url, output_path="video.mp4"):
+def download_video(url, cookie_path=None, output_path="video.mp4"):
     ydl_opts = {
         'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
         'outtmpl': 'video',
         'merge_output_format': 'mp4',
     }
+    if cookie_path:
+        ydl_opts['cookiefile'] = cookie_path
+        
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
     return "video.mp4"
@@ -70,7 +74,6 @@ def download_video(url, output_path="video.mp4"):
 def crop_video_vertical(video_path, start, end, output_path="clip_vertical.mp4"):
     clip = VideoFileClip(video_path).subclip(start, end)
     
-    # Calculate center crop for 9:16
     w, h = clip.size
     target_ratio = 9/16
     target_w = h * target_ratio
@@ -79,7 +82,6 @@ def crop_video_vertical(video_path, start, end, output_path="clip_vertical.mp4")
     x1 = x_center - (target_w / 2)
     x2 = x_center + (target_w / 2)
     
-    # Crop to center vertical
     cropped = clip.crop(x1=x1, y1=0, x2=x2, y2=h)
     cropped.write_videofile(output_path, codec="libx264", audio_codec="aac")
     clip.close()
