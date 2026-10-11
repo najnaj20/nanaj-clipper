@@ -4,6 +4,20 @@ from faster_whisper import WhisperModel
 from moviepy.editor import VideoFileClip
 import subprocess
 
+def validate_cookies(cookie_path):
+    if not cookie_path or not os.path.exists(cookie_path):
+        return False, "cookies.txt tidak ditemukan."
+    
+    required = ["SID", "HSID", "SSID", "APISID", "SAPISID", "LOGIN_INFO"]
+    with open(cookie_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    
+    missing = [c for c in required if c not in content]
+    if missing:
+        return False, f"Cookies tidak lengkap. Kurang: {', '.join(missing)}. Silakan export ulang cookies saat sudah login YouTube."
+    
+    return True, ""
+
 def download_audio(url, cookie_path=None, output_path="audio.mp3"):
     ydl_opts = {
         'format': 'bestaudio/best',
@@ -13,12 +27,12 @@ def download_audio(url, cookie_path=None, output_path="audio.mp3"):
             'preferredcodec': 'mp3',
             'preferredquality': '192',
         }],
-        # Bypass "The page needs to be reloaded" by mimicking Android client
         'extractor_args': {
             'youtube': {
                 'player_client': ['android', 'web'],
             }
         },
+        'concurrent_fragment_downloads': 1, # Human-like traffic
     }
     if cookie_path:
         ydl_opts['cookiefile'] = cookie_path
@@ -69,12 +83,12 @@ def download_video(url, cookie_path=None, output_path="video.mp4"):
         'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
         'outtmpl': 'video',
         'merge_output_format': 'mp4',
-        # Bypass "The page needs to be reloaded" by mimicking Android client
         'extractor_args': {
             'youtube': {
                 'player_client': ['android', 'web'],
             }
         },
+        'concurrent_fragment_downloads': 1,
     }
     if cookie_path:
         ydl_opts['cookiefile'] = cookie_path
