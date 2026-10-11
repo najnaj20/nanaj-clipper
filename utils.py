@@ -19,21 +19,20 @@ def validate_cookies(cookie_path):
 def run_ytdlp(args):
     """Helper to run yt-dlp as a CLI command to bypass Python module bugs."""
     cmd = ["yt-dlp"] + args
-    # We use subprocess to isolate the execution from the Streamlit Python process
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(f"yt-dlp CLI Error: {result.stderr}")
     return result.stdout
 
 def download_audio(url, cookie_path=None, output_path="audio.mp3"):
-    # Using CLI flags instead of Python dict to avoid the 'metadata_errors' bug
+    # FIX: Use --no-check-certificate (CLI flag) instead of --nocheckcertificate
     args = [
         "-f", "bestaudio/best",
         "-x", "--audio-format", "mp3",
         "--audio-quality", "128K",
         "-o", "audio.%(ext)s",
         "--no-playlist",
-        "--nocheckcertificate",
+        "--no-check-certificate",
         "--extractor-args", "youtube:player_client=android,web",
         url
     ]
@@ -81,12 +80,13 @@ def analyze_viral_potential(transcript):
     return suggestions[:5]
 
 def download_video(url, cookie_path=None, output_path="video.mp4"):
+    # FIX: Use --no-check-certificate (CLI flag) instead of --nocheckcertificate
     args = [
         "-f", "bestvideo+bestaudio/best",
         "--merge-output-format", "mp4",
         "-o", "video.%(ext)s",
         "--no-playlist",
-        "--nocheckcertificate",
+        "--no-check-certificate",
         "--extractor-args", "youtube:player_client=android,web",
         url
     ]
