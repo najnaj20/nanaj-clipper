@@ -25,7 +25,7 @@ def download_audio(url, cookie_path=None, output_path="audio.mp3"):
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
-            'preferredquality': '192',
+            'preferredquality': '128', # Lower quality for faster processing
         }],
         'extractor_args': {
             'youtube': {
@@ -33,6 +33,7 @@ def download_audio(url, cookie_path=None, output_path="audio.mp3"):
             }
         },
         'concurrent_fragment_downloads': 1,
+        'nocheckcertificate': True,
     }
     if cookie_path:
         ydl_opts['cookiefile'] = cookie_path
@@ -42,7 +43,8 @@ def download_audio(url, cookie_path=None, output_path="audio.mp3"):
     return "audio.mp3"
 
 def transcribe_audio(audio_path):
-    model_size = "base"
+    # SWITCH TO 'tiny' MODEL FOR MEMORY EFFICIENCY (Prevents Streamlit OOM)
+    model_size = "tiny" 
     model = WhisperModel(model_size, device="cpu", compute_type="int8")
     segments, info = model.transcribe(audio_path, beam_size=5)
     
@@ -79,8 +81,6 @@ def analyze_viral_potential(transcript):
     return suggestions[:5]
 
 def download_video(url, cookie_path=None, output_path="video.mp4"):
-    # Changed format to be more flexible. 
-    # We pick the best quality and let merge_output_format handle the MP4 conversion.
     ydl_opts = {
         'format': 'bestvideo+bestaudio/best',
         'outtmpl': 'video',
@@ -91,6 +91,7 @@ def download_video(url, cookie_path=None, output_path="video.mp4"):
             }
         },
         'concurrent_fragment_downloads': 1,
+        'nocheckcertificate': True,
     }
     if cookie_path:
         ydl_opts['cookiefile'] = cookie_path
@@ -100,17 +101,18 @@ def download_video(url, cookie_path=None, output_path="video.mp4"):
     return "video.mp4"
 
 def crop_video_vertical(video_path, start, end, output_path="clip_vertical.mp4"):
-    clip = VideoFileClip(video_path).subclip(start, end)
-    
-    w, h = clip.size
-    target_ratio = 9/16
-    target_w = h * target_ratio
-    
-    x_center = w / 2
-    x1 = x_center - (target_w / 2)
-    x2 = x_center + (target_w / 2)
-    
-    cropped = clip.crop(x1=x1, y1=0, x2=x2, y2=h)
-    cropped.write_videofile(output_path, codec="libx264", audio_codec="aac")
-    clip.close()
+    # use context manager for better memory cleanup
+    with VideoFileClip(video_path) as clip:
+        sub = clip.subclip(start, end)
+        
+        w, h = sub.size
+        target_ratio = 9/16
+        target_w = h * target_ratio
+        
+        x_center = w / 2
+        x1 = x_center - (target_w / 2)
+        x2 = x_center + (target_w / 2)
+        
+        cropped = sub.crop(x1=x1, y1=0, x2=x2, y2=h)
+        cropped.write_videofile(output_path, codec="libx264", audio_codec="aac", threads=1) # Limit threads for stability
     return output_path
