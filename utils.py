@@ -18,12 +18,16 @@ def validate_cookies(cookie_path):
     return True, ""
 
 def get_base_opts(cookie_path=None):
-    """Return a robust set of options to bypass YouTube bot detection."""
+    """Return a robust set of options to bypass YouTube bot detection and metadata bugs."""
     return {
         'nocheckcertificate': True,
         'ignoreerrors': True,
         'no_playlist': True,
         'concurrent_fragment_downloads': 1,
+        # FIX: Disable metadata writing to avoid 'metadata_errors' bug
+        'write_info_json': False,
+        'write_all_thumbnails': False,
+        'write_thumbnail': False,
         'extractor_args': {
             'youtube': {
                 'player_client': ['android', 'web', 'ios'],
