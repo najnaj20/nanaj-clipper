@@ -17,8 +17,29 @@ def validate_cookies(cookie_path):
     
     return True, ""
 
+def get_base_opts(cookie_path=None):
+    """Return a robust set of options to bypass YouTube bot detection."""
+    return {
+        'nocheckcertificate': True,
+        'ignoreerrors': True,
+        'no_playlist': True,
+        'concurrent_fragment_downloads': 1,
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['android', 'web', 'ios'],
+            }
+        },
+        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        'http_headers': {
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3',
+            'Accept-Language': 'en-US,en;q=0.9,id;q=0.8',
+            'Referer': 'https://www.youtube.com/',
+        }
+    }
+
 def download_audio(url, cookie_path=None, output_path="audio.mp3"):
-    ydl_opts = {
+    opts = get_base_opts(cookie_path)
+    opts.update({
         'format': 'bestaudio/best',
         'outtmpl': 'audio',
         'postprocessors': [{
@@ -26,19 +47,11 @@ def download_audio(url, cookie_path=None, output_path="audio.mp3"):
             'preferredcodec': 'mp3',
             'preferredquality': '128',
         }],
-        'extractor_args': {
-            'youtube': {
-                'player_client': ['android', 'web'],
-            }
-        },
-        'concurrent_fragment_downloads': 1,
-        'nocheckcertificate': True,
-        'no_playlist': True,
-    }
+    })
     if cookie_path:
-        ydl_opts['cookiefile'] = cookie_path
+        opts['cookiefile'] = cookie_path
         
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+    with yt_dlp.YoutubeDL(opts) as ydl:
         ydl.download([url])
     return "audio.mp3"
 
@@ -80,34 +93,22 @@ def analyze_viral_potential(transcript):
     return suggestions[:5]
 
 def download_video(url, cookie_path=None, output_path="video.mp4"):
-    ydl_opts = {
-        'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+    opts = get_base_opts(cookie_path)
+    opts.update({
+        'format': 'bestvideo+bestaudio/best',
         'outtmpl': 'video',
         'merge_output_format': 'mp4',
-        'extractor_args': {
-            'youtube': {
-                'player_client': ['android', 'web'],
-            }
-        },
-        'concurrent_fragment_downloads': 1,
-        'nocheckcertificate': True,
-        'no_playlist': True,
-    }
+    })
     if cookie_path:
-        ydl_opts['cookiefile'] = cookie_path
+        opts['cookiefile'] = cookie_path
         
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+    with yt_dlp.YoutubeDL(opts) as ydl:
         ydl.download([url])
     return "video.mp4"
 
 def crop_video_vertical(video_path, start, end, output_path="clip_vertical.mp4"):
-    # EXTREME OPTIMIZATION: Use FFmpeg directly instead of MoviePy
-    # MoviePy loads the clip into RAM, which crashes Streamlit Cloud.
-    # FFmpeg processes the stream without loading the whole file into RAM.
-    
     duration = end - start
     
-    # Get video dimensions first
     probe_cmd = [
         "ffprobe", "-v", "error", "-select_streams", "v:0", 
         "-show_entries", "stream=width,height", "-of", "csv=s=x:p=0", video_path
@@ -121,13 +122,6 @@ def crop_video_vertical(video_path, start, end, output_path="clip_vertical.mp4")
     target_w = int(h * (9/16))
     x_offset = (w - target_w) // 2
     
-    # FFmpeg command:
-    # 1. -ss: start time
-    # 2. -t: duration
-    # 3. -vf: crop=width:height:x:y
-    # 4. -c:v libx264: standard codec
-    # 5. -crf 23: standard quality
-    # 6. -preset veryfast: speed up rendering
     cmd = [
         "ffmpeg", "-y",
         "-ss", str(start),
